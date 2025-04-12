@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Layout from "./components/Layout";
+import Index from "./pages/Index";
 import ChatbotPage from "./pages/ChatbotPage";
 import DoctorsPage from "./pages/DoctorsPage";
 import SymptomIdentifierPage from "./pages/SymptomIdentifierPage";
@@ -26,7 +27,8 @@ const App = () => (
         <BrowserRouter>
           <Layout>
             <Routes>
-              <Route path="/" element={<ChatbotPage />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/chatbot" element={<ChatbotPage />} />
               <Route path="/doctors" element={<DoctorsPage />} />
               <Route path="/symptom-identifier" element={<SymptomIdentifierPage />} />
               <Route path="/medicine-timetable" element={<MedicineTimetablePage />} />

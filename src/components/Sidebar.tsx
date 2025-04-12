@@ -58,16 +58,16 @@ export function Sidebar() {
       {/* App Logo */}
       <Link to="/" className="sidebar-icon mt-4">
         <Stethoscope size={24} className="text-medease-500" />
-        <span className="sidebar-tooltip group-hover:scale-100">MedEase</span>
+        <span className="sidebar-tooltip group-hover:scale-100">Home</span>
       </Link>
 
       <div className="flex flex-col items-center mt-10 flex-1 space-y-2">
         {/* Chatbot */}
-        <Link to="/">
+        <Link to="/chatbot">
           <SidebarIcon 
             icon={MessageSquare} 
             tooltip="AI Chatbot" 
-            active={isActive("/")}
+            active={isActive("/chatbot")}
           />
         </Link>
 

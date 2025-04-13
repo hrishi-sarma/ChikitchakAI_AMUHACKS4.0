@@ -6,55 +6,7 @@ import { Stethoscope, UserSearch, Pill, FileText, Image as ImageIcon, MessagesSq
 
 // Define feature data for the homepage
 const features = [
-  {
-    title: "AI Health Assistant",
-    description: "Chat with our AI to get quick answers to your health questions and concerns.",
-    icon: <MessagesSquare className="h-10 w-10 text-medease-500" />,
-    path: "/chatbot",
-    color: "bg-medease-50 dark:bg-medease-900/30"
-  },
-  {
-    title: "Find Doctors",
-    description: "Discover and book appointments with the best healthcare providers near you.",
-    icon: <UserSearch className="h-10 w-10 text-indigo-500" />,
-    path: "/doctors",
-    color: "bg-indigo-50 dark:bg-indigo-900/30"
-  },
-  {
-    title: "Symptom Identifier",
-    description: "Upload skin images to identify potential dermatological conditions.",
-    icon: <Stethoscope className="h-10 w-10 text-rose-500" />,
-    path: "/symptom-identifier",
-    color: "bg-rose-50 dark:bg-rose-900/30"
-  },
-  {
-    title: "Medicine Timetable",
-    description: "Track and manage your medication schedule with timely reminders.",
-    icon: <Pill className="h-10 w-10 text-emerald-500" />,
-    path: "/medicine-timetable",
-    color: "bg-emerald-50 dark:bg-emerald-900/30"
-  },
-  {
-    title: "Blood Test Analysis",
-    description: "Upload and analyze your blood test results for easy interpretation.",
-    icon: <FileText className="h-10 w-10 text-amber-500" />,
-    path: "/blood-test",
-    color: "bg-amber-50 dark:bg-amber-900/30"
-  },
-  {
-    title: "X-Ray Analysis",
-    description: "AI-powered analysis of X-ray images for preliminary assessment.",
-    icon: <ImageIcon className="h-10 w-10 text-cyan-500" />,
-    path: "/xray-analysis",
-    color: "bg-cyan-50 dark:bg-cyan-900/30"
-  },
-  {
-    title: "Health Blog",
-    description: "Read the latest articles on health topics written by medical professionals.",
-    icon: <BookOpen className="h-10 w-10 text-purple-500" />,
-    path: "/blog",
-    color: "bg-purple-50 dark:bg-purple-900/30"
-  }
+  
 ];
 
 const Index = () => {

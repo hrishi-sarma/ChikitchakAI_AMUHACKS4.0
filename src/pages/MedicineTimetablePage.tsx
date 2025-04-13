@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
@@ -252,6 +251,22 @@ export default function MedicineTimetablePage() {
       setFormOpen(true);
     }
   };
+
+  // Function to initialize the add medication form
+  const handleOpenAddForm = () => {
+    setEditingMedicationId(null);
+    setNewMedication({
+      name: "",
+      dosage: "",
+      frequency: "",
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: "",
+      timeSlots: [],
+      notes: "",
+      color: "bg-blue-500"
+    });
+    setFormOpen(true);
+  };
   
   const TimetablePanel = () => (
     <Tabs defaultValue="schedule" className="w-full h-full">
@@ -369,183 +384,13 @@ export default function MedicineTimetablePage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Medication Management</h2>
         
-        <Dialog open={formOpen} onOpenChange={setFormOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              onClick={() => {
-                setEditingMedicationId(null);
-                setNewMedication({
-                  name: "",
-                  dosage: "",
-                  frequency: "",
-                  startDate: new Date().toISOString().split('T')[0],
-                  endDate: "",
-                  timeSlots: [],
-                  notes: "",
-                  color: "bg-blue-500"
-                });
-              }}
-              className="bg-medease-500 hover:bg-medease-600"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Medication
-            </Button>
-          </DialogTrigger>
-          
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogTitle>
-              {editingMedicationId ? "Edit Medication" : "Add New Medication"}
-            </DialogTitle>
-            
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">Medication Name</label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={newMedication.name || ""}
-                  onChange={handleInputChange}
-                  placeholder="Enter medication name"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="dosage" className="text-sm font-medium">Dosage</label>
-                  <Input
-                    id="dosage"
-                    name="dosage"
-                    value={newMedication.dosage || ""}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 500mg"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="frequency" className="text-sm font-medium">Frequency</label>
-                  <Input
-                    id="frequency"
-                    name="frequency"
-                    value={newMedication.frequency || ""}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 3x daily"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="startDate" className="text-sm font-medium">Start Date</label>
-                  <Input
-                    id="startDate"
-                    name="startDate"
-                    type="date"
-                    value={newMedication.startDate || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="endDate" className="text-sm font-medium">End Date</label>
-                  <Input
-                    id="endDate"
-                    name="endDate"
-                    type="date"
-                    value={newMedication.endDate || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Time Slots</label>
-                <div className="border rounded-md p-4">
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Select times to take this medication:
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {["08:00", "12:00", "15:00", "20:00"].map(time => (
-                      <div key={time} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`time-${time}`}
-                          checked={newMedication.timeSlots?.includes(time) || false}
-                          onChange={() => handleTimeSlotToggle(time)}
-                        />
-                        <label htmlFor={`time-${time}`}>{time}</label>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex mt-2">
-                    <Input
-                      value={customTimeSlot}
-                      onChange={(e) => setCustomTimeSlot(e.target.value)}
-                      placeholder="HH:MM"
-                      className="mr-2"
-                    />
-                    <Button variant="outline" size="sm" onClick={handleAddCustomTimeSlot}>
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                  
-                  {(newMedication.timeSlots?.length || 0) > 0 && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium mb-1">Selected times:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {newMedication.timeSlots?.map(time => (
-                          <div key={time} className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm flex items-center">
-                            {time}
-                            <X 
-                              className="h-3 w-3 ml-1 cursor-pointer" 
-                              onClick={() => handleTimeSlotToggle(time)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="notes" className="text-sm font-medium">Notes</label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={newMedication.notes || ""}
-                  onChange={handleInputChange}
-                  placeholder="Additional instructions or notes"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Color Label</label>
-                <div className="flex space-x-2">
-                  {["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500"].map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => handleColorSelect(color)}
-                      className={`w-6 h-6 rounded-full ${color} ${
-                        newMedication.color === color ? "ring-2 ring-offset-2 ring-medease-500" : ""
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setFormOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="bg-medease-500 hover:bg-medease-600" onClick={handleSaveMedication}>
-                {editingMedicationId ? "Update" : "Add"} Medication
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          onClick={handleOpenAddForm}
+          className="bg-medease-500 hover:bg-medease-600"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Medication
+        </Button>
       </div>
       
       <div className="space-y-6">
@@ -609,6 +454,175 @@ export default function MedicineTimetablePage() {
           <Button variant="outline" className="w-full">View Medication Reports</Button>
         </div>
       </div>
+
+      {/* Medication Form Dialog */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogTitle>
+            {editingMedicationId ? "Edit Medication" : "Add New Medication"}
+          </DialogTitle>
+                  
+          {/* Wrap the dialog content in a form to handle submit events */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveMedication();
+            }}
+          >
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">Medication Name</label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={newMedication.name ?? ""}
+                  onChange={handleInputChange}
+                  placeholder="Enter medication name"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="dosage" className="text-sm font-medium">Dosage</label>
+                  <Input
+                    id="dosage"
+                    name="dosage"
+                    type="text"
+                    value={newMedication.dosage ?? ""}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 500mg"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="frequency" className="text-sm font-medium">Frequency</label>
+                  <Input
+                    id="frequency"
+                    name="frequency"
+                    type="text"
+                    value={newMedication.frequency ?? ""}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 3x daily"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="startDate" className="text-sm font-medium">Start Date</label>
+                  <Input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    value={newMedication.startDate ?? ""}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="endDate" className="text-sm font-medium">End Date</label>
+                  <Input
+                    id="endDate"
+                    name="endDate"
+                    type="date"
+                    value={newMedication.endDate ?? ""}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Time Slots</label>
+                <div className="border rounded-md p-4">
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Select times to take this medication:
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {["08:00", "12:00", "15:00", "20:00"].map(time => (
+                      <div key={time} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`time-${time}`}
+                          checked={newMedication.timeSlots?.includes(time) || false}
+                          onChange={() => handleTimeSlotToggle(time)}
+                        />
+                        <label htmlFor={`time-${time}`}>{time}</label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex mt-2">
+                    <Input
+                      type="text"
+                      value={customTimeSlot}
+                      onChange={(e) => setCustomTimeSlot(e.target.value)}
+                      placeholder="HH:MM"
+                      className="mr-2"
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddCustomTimeSlot}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                  
+                  {(newMedication.timeSlots?.length || 0) > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium mb-1">Selected times:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {newMedication.timeSlots?.map(time => (
+                          <div key={time} className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm flex items-center">
+                            {time}
+                            <X 
+                              className="h-3 w-3 ml-1 cursor-pointer" 
+                              onClick={() => handleTimeSlotToggle(time)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+                
+              <div className="space-y-2">
+                <label htmlFor="notes" className="text-sm font-medium">Notes</label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={newMedication.notes ?? ""}
+                  onChange={handleInputChange}
+                  placeholder="Additional instructions or notes"
+                />
+              </div>
+                
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Color Label</label>
+                <div className="flex space-x-2">
+                  {["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500"].map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => handleColorSelect(color)}
+                      className={`w-6 h-6 rounded-full ${color} ${
+                        newMedication.color === color ? "ring-2 ring-offset-2 ring-medease-500" : ""
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+                
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-medease-500 hover:bg-medease-600">
+                {editingMedicationId ? "Update" : "Add"} Medication
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 

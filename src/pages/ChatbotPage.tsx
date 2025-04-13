@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,7 +83,7 @@ export default function ChatbotPage() {
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
-      sender: "user",
+      sender: "user" as const,
       timestamp: new Date(),
     };
     
@@ -114,7 +113,7 @@ export default function ChatbotPage() {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: responseText,
-        sender: "bot",
+        sender: "bot" as const,
         timestamp: new Date(),
       };
       
@@ -127,7 +126,7 @@ export default function ChatbotPage() {
     const initialMessage = {
       id: Date.now().toString(),
       text: "Hello! I'm MedEase AI. How can I assist you with your health questions today?",
-      sender: "bot",
+      sender: "bot" as const,
       timestamp: new Date(),
     };
     

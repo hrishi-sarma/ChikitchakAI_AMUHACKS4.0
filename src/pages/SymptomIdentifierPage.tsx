@@ -1,251 +1,212 @@
-
 import { useState, useRef } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Upload, Image as ImageIcon, Info, AlertCircle } from "lucide-react";
+import { Upload, FileText, Info, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 
-export default function SymptomIdentifierPage() {
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+export default function GenomeAnalysisPage() {
+  const [uploadedText, setUploadedText] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  interface AnalysisResult {
+    mutation: string;
+    description: string;
+    recommendations: string[];
+    severity: string;
+  }
+
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please select an image less than 5MB in size.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
       // Check file type
-      if (!file.type.startsWith('image/')) {
+      if (file.type !== "text/plain") {
         toast({
           title: "Invalid file type",
-          description: "Please select an image file (JPEG, PNG, etc).",
-          variant: "destructive"
+          description: "Please upload a plain text (.txt) file.",
+          variant: "destructive",
         });
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onload = (event) => {
-        setUploadedImage(event.target?.result as string);
+        setUploadedText(event.target?.result as string);
         setAnalysisResult(null);
         toast({
-          title: "Image uploaded",
-          description: "Your image has been uploaded successfully. Click 'Analyze Image' to continue."
+          title: "File uploaded",
+          description: "Your genome text file has been uploaded. Click 'Analyze File' to continue.",
         });
       };
-      reader.readAsDataURL(file);
+      reader.readAsText(file);
     }
   };
+
+  const analyzeText = async () => {
+    if (!uploadedText) return;
   
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please select an image less than 5MB in size.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Check file type
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file (JPEG, PNG, etc).",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setUploadedImage(event.target?.result as string);
-        setAnalysisResult(null);
-        toast({
-          title: "Image uploaded",
-          description: "Your image has been uploaded successfully. Click 'Analyze Image' to continue."
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  const analyzeImage = () => {
-    if (!uploadedImage) return;
-    
     setAnalyzing(true);
-    
-    // Mock analysis - in a real app, this would call an API
-    setTimeout(() => {
-      setAnalysisResult({
-        condition: "Contact Dermatitis",
-        confidence: 87.2,
-        description: "This appears to be contact dermatitis, an inflammatory skin condition caused by contact with irritants or allergens.",
-        recommendations: [
-          "Avoid contact with the suspected irritant",
-          "Apply over-the-counter hydrocortisone cream",
-          "Take an oral antihistamine to relieve itching",
-          "Consult a dermatologist if symptoms persist for more than a week"
-        ],
-        severity: "Mild to Moderate"
+  
+    try {
+      const blob = new Blob([uploadedText], { type: "text/plain" });
+      const file = new File([blob], "genome.txt", { type: "text/plain" });
+      const formData = new FormData();
+      formData.append("file", file);
+  
+      const response = await fetch("http://localhost:5001/api/analyze-genome", {
+        method: "POST",
+        body: formData,
       });
-      setAnalyzing(false);
+  
+      const data = await response.json();
+      if (data.error || !data.results || data.results.length === 0) {
+        throw new Error(data.error || "No valid SNPs found.");
+      }
+  
+      const firstResult = data.results[0]; // Displaying only the first result for now
+      setAnalysisResult({
+        mutation: `${firstResult.gene} (${firstResult.rsid})`,
+        description: firstResult.predictive_health,
+        recommendations: [
+          firstResult.lifestyle_advice,
+          firstResult.nutrition_advice,
+          ...Object.values(firstResult.health_report || {}),
+        ],
+        severity:
+          firstResult.category === "homozygous_risk"
+            ? "High Risk"
+            : firstResult.category === "heterozygous"
+            ? "Moderate Risk"
+            : "Low Risk",
+      });
+  
       toast({
         title: "Analysis complete",
-        description: "Your image has been analyzed. View the results on the right panel."
+        description: `Report generated for ${firstResult.rsid}`,
       });
-    }, 2000);
+    } catch (err: any) {
+      toast({
+        title: "Analysis failed",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzing(false);
+    }
   };
   
+
   const UploadPanel = () => (
     <div className="p-6 h-full flex flex-col">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold mb-2">Upload Skin Image</h2>
+        <h2 className="text-xl font-semibold mb-2">Upload Genome Data</h2>
         <p className="text-muted-foreground text-sm">
-          Upload a clear, well-lit image of the affected area for analysis
+          Upload a plain text file (.txt) containing your genomic sequence or data
         </p>
       </div>
-      
-      {!uploadedImage ? (
-        <div 
-          className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12"
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-        >
+
+      {!uploadedText ? (
+        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12">
           <div className="text-center">
-            <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">
-              Drag and drop an image, or click to browse
-            </p>
-            <label htmlFor="image-upload">
+            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">Click below to select a .txt file</p>
+            <label htmlFor="text-upload">
               <input
-                id="image-upload"
+                id="text-upload"
                 type="file"
-                accept="image/*"
+                accept=".txt"
                 className="hidden"
-                onChange={handleImageUpload}
+                onChange={handleFileUpload}
                 ref={fileInputRef}
               />
-              <Button variant="outline" className="mx-auto">
+              <Button variant="outline" className="mx-auto" onClick={handleButtonClick}>
                 <Upload className="h-4 w-4 mr-2" />
-                Choose Image
+                Choose File
               </Button>
             </label>
           </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col">
-          <div className="relative mx-auto mb-6 max-h-[50vh] overflow-hidden rounded-lg">
-            <img
-              src={uploadedImage}
-              alt="Uploaded symptom"
-              className="max-w-full max-h-[50vh] object-contain"
-            />
+          <div className="border rounded p-4 bg-gray-50 dark:bg-gray-800 max-h-[200px] overflow-auto text-sm whitespace-pre-wrap">
+            {uploadedText}
           </div>
-          
           <div className="flex justify-center gap-4 mt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
-                setUploadedImage(null);
+                setUploadedText(null);
                 setAnalysisResult(null);
                 if (fileInputRef.current) {
                   fileInputRef.current.value = '';
                 }
               }}
             >
-              Change Image
+              Change File
             </Button>
             <Button
-              onClick={analyzeImage}
+              onClick={analyzeText}
               disabled={analyzing}
               className="bg-medease-500 hover:bg-medease-600"
             >
-              {analyzing ? "Analyzing..." : "Analyze Image"}
+              {analyzing ? "Analyzing..." : "Analyze File"}
             </Button>
           </div>
         </div>
       )}
-      
+
       <div className="mt-8 text-xs text-muted-foreground text-center">
         <p className="flex items-center justify-center">
           <AlertCircle className="h-3 w-3 mr-1" />
-          For educational purposes only. Always consult a healthcare professional.
+          For informational use only. Not a substitute for professional medical advice.
         </p>
       </div>
     </div>
   );
-  
+
   const ResultsPanel = () => (
     <div className="p-6 h-full">
-      <h2 className="text-xl font-semibold mb-4">Analysis Results</h2>
-      
+      <h2 className="text-xl font-semibold mb-4">Genome Analysis Results</h2>
       {!analysisResult ? (
         <div className="h-full flex flex-col items-center justify-center text-center">
           <Info className="h-16 w-16 text-medease-300 mb-4" />
           <p className="text-muted-foreground">
-            {analyzing 
-              ? "Analyzing your image..."
-              : uploadedImage 
-                ? "Click 'Analyze Image' to get results" 
-                : "Upload an image to see analysis results"}
+            {analyzing
+              ? "Analyzing genome file..."
+              : uploadedText
+                ? "Click 'Analyze File' to see results"
+                : "Upload a genome text file to begin"}
           </p>
-          {analyzing && (
-            <div className="mt-4 flex space-x-2">
-              <div className="w-3 h-3 rounded-full bg-medease-500 animate-bounce"></div>
-              <div className="w-3 h-3 rounded-full bg-medease-500 animate-bounce delay-100"></div>
-              <div className="w-3 h-3 rounded-full bg-medease-500 animate-bounce delay-200"></div>
-            </div>
-          )}
         </div>
       ) : (
         <ScrollArea className="h-[calc(100vh-16rem)]">
           <div className="space-y-6">
             <div className="bg-medease-50 dark:bg-medease-900/30 rounded-lg p-4">
               <div className="flex justify-between items-start">
-                <h3 className="font-medium text-lg">{analysisResult.condition}</h3>
+                <h3 className="font-medium text-lg">{analysisResult.mutation}</h3>
                 <span className="bg-medease-100 text-medease-800 px-2 py-1 rounded text-sm">
-                  {analysisResult.confidence.toFixed(1)}% Match
+              
                 </span>
               </div>
-              <p className="mt-2 text-muted-foreground">
-                {analysisResult.description}
-              </p>
+              <p className="mt-2 text-muted-foreground">{analysisResult.description}</p>
             </div>
-            
+
             <div>
               <h3 className="font-medium mb-2">Severity</h3>
-              <div className="bg-medgreen-50 dark:bg-medgreen-900/30 p-3 rounded">
+              <div className="bg-red-50 dark:bg-red-900/30 p-3 rounded">
                 {analysisResult.severity}
               </div>
             </div>
-            
+
             <div>
               <h3 className="font-medium mb-2">Recommendations</h3>
               <ul className="list-disc pl-5 space-y-2">
@@ -253,26 +214,6 @@ export default function SymptomIdentifierPage() {
                   <li key={i}>{rec}</li>
                 ))}
               </ul>
-            </div>
-            
-            <div className="border-t pt-4">
-              <h3 className="font-medium mb-2">Next Steps</h3>
-              <Button className="w-full bg-medease-500 hover:bg-medease-600 mb-2">
-                Consult with a Specialist
-              </Button>
-              <Button variant="outline" className="w-full">
-                Learn More About This Condition
-              </Button>
-            </div>
-            
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-sm">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
-                <p>
-                  This analysis is preliminary and for informational purposes only. 
-                  Please consult with a healthcare professional for proper diagnosis and treatment.
-                </p>
-              </div>
             </div>
           </div>
         </ScrollArea>
@@ -282,7 +223,7 @@ export default function SymptomIdentifierPage() {
 
   return (
     <FeatureLayout
-      title="Symptom Identifier"
+      title="Genome Analysis"
       leftPanel={<UploadPanel />}
       rightPanel={<ResultsPanel />}
     />

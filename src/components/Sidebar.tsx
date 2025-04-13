@@ -11,6 +11,7 @@ import {
   Sun, 
   Moon, 
   Stethoscope,
+  Computer,
   BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,8 +85,8 @@ export function Sidebar() {
         {/* Image Symptom Identifier */}
         <Link to="/symptom-identifier">
           <SidebarIcon 
-            icon={Camera} 
-            tooltip="Symptom Identifier" 
+            icon={Computer} 
+            tooltip="Genome Analysis" 
             active={isActive("/symptom-identifier")}
           />
         </Link>

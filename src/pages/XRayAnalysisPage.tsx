@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
@@ -8,20 +7,34 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { Progress } from "@/components/ui/progress";
+
+interface AnalysisResult {
+  prediction: string;
+  confidence: number;
+  top_predictions: {
+    class: string;
+    confidence: number;
+  }[];
+}
 
 export default function XRayAnalysisPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
   
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -30,8 +43,6 @@ export default function XRayAnalysisPage() {
         });
         return;
       }
-      
-      // Check file type
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid file type",
@@ -40,7 +51,6 @@ export default function XRayAnalysisPage() {
         });
         return;
       }
-      
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
@@ -64,12 +74,9 @@ export default function XRayAnalysisPage() {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
-      
-      // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -78,8 +85,6 @@ export default function XRayAnalysisPage() {
         });
         return;
       }
-      
-      // Check file type
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid file type",
@@ -88,7 +93,6 @@ export default function XRayAnalysisPage() {
         });
         return;
       }
-      
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
@@ -104,50 +108,54 @@ export default function XRayAnalysisPage() {
     }
   };
   
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     if (!uploadedImage) return;
-    
     setAnalyzing(true);
-    
-    // Mock analysis - in a real app, this would call an API
-    setTimeout(() => {
-      setAnalysisResult({
-        finding: "No significant abnormalities detected",
-        confidence: 89.3,
-        details: [
-          {
-            region: "Lungs",
-            observation: "Clear lung fields without evidence of consolidation, effusion, or pneumothorax.",
-            confidence: 92.1
-          },
-          {
-            region: "Heart",
-            observation: "Normal cardiac silhouette. Cardiothoracic ratio within normal limits.",
-            confidence: 90.5
-          },
-          {
-            region: "Bones",
-            observation: "No acute fractures or dislocations. Mild degenerative changes in the thoracic spine.",
-            confidence: 87.8
-          },
-          {
-            region: "Soft Tissues",
-            observation: "Unremarkable soft tissue findings.",
-            confidence: 93.2
-          }
-        ],
-        recommendations: [
-          "No further imaging studies required at this time.",
-          "Recommend clinical correlation with patient symptoms.",
-          "Follow-up imaging in 12 months as preventative screening."
-        ]
+    try {
+      // Convert the base64 image to a blob
+      const base64Response = await fetch(uploadedImage);
+      const blob = await base64Response.blob();
+      if (blob.size === 0) {
+        throw new Error("Generated blob is empty");
+      }
+      // Create a File object from blob
+      const imageFile = new File([blob], "image.jpg", { type: blob.type });
+      const formData = new FormData();
+      formData.append("file", imageFile);
+      // Send the image to the Flask API backend
+      const response = await fetch("http://localhost:5000/api/predict", {
+        method: "POST",
+        body: formData,
       });
-      setAnalyzing(false);
+      const responseText = await response.text();
+      if (!responseText || responseText.trim() === '') {
+        throw new Error("Empty response from server");
+      }
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error("Failed to parse JSON response:", responseText.substring(0, 200));
+        throw new Error("Invalid response format from server");
+      }
+      if (!response.ok || result.error) {
+        throw new Error(result.error || "Analysis failed");
+      }
+      setAnalysisResult(result);
       toast({
         title: "Analysis complete",
         description: "Your X-ray has been analyzed. View the detailed results in the right panel."
       });
-    }, 2500);
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+      toast({
+        title: "Analysis failed",
+        description: error instanceof Error ? error.message : "There was an error analyzing your image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setAnalyzing(false);
+    }
   };
   
   const handleZoomIn = () => {
@@ -174,24 +182,18 @@ export default function XRayAnalysisPage() {
             onDrop={handleDrop}
           >
             <div className="text-center">
-              <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">
-                Upload an X-ray image for analysis
-              </p>
-              <label htmlFor="xray-upload">
-                <input
-                  id="xray-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                  ref={fileInputRef}
-                />
-                <Button variant="outline" className="mx-auto">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose X-Ray Image
-                </Button>
-              </label>
+              <input
+                id="xray-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+                ref={fileInputRef}
+              />
+              <Button variant="outline" onClick={handleButtonClick}>
+                <Upload className="h-4 w-4 mr-2" />
+                Choose X-Ray Image
+              </Button>
             </div>
           </div>
         ) : (
@@ -265,10 +267,9 @@ export default function XRayAnalysisPage() {
               alt="X-Ray"
               className="max-w-full max-h-full object-contain"
             />
-            
             {analysisResult && (
               <div className="absolute inset-0 pointer-events-none">
-                {/* Visualizations/markers would go here in a real app */}
+                {/* Additional visual markers can be placed here */}
               </div>
             )}
           </div>
@@ -331,7 +332,9 @@ export default function XRayAnalysisPage() {
                 <div className="space-y-6">
                   <div className="bg-medease-50 dark:bg-medease-900/30 rounded-lg p-4">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-lg">{analysisResult.finding}</h3>
+                      <h3 className="font-medium text-lg">
+                        Identified Implant: {analysisResult.prediction}
+                      </h3>
                       <span className="bg-medease-100 text-medease-800 px-2 py-1 rounded text-sm">
                         {analysisResult.confidence.toFixed(1)}% Confidence
                       </span>
@@ -339,29 +342,38 @@ export default function XRayAnalysisPage() {
                   </div>
                   
                   <div>
-                    <h3 className="font-medium mb-4">Detailed Findings</h3>
+                    <h3 className="font-medium mb-4">Alternative Possibilities</h3>
                     <div className="space-y-4">
-                      {analysisResult.details.map((detail: any, i: number) => (
+                      {analysisResult.top_predictions.map((prediction, i) => (
                         <div key={i} className="border rounded-lg p-4">
                           <div className="flex justify-between mb-1">
-                            <h4 className="font-medium">{detail.region}</h4>
+                            <h4 className="font-medium">{prediction.class}</h4>
                             <span className="text-sm text-muted-foreground">
-                              {detail.confidence.toFixed(1)}% Confidence
+                              {prediction.confidence.toFixed(1)}% Confidence
                             </span>
                           </div>
-                          <p className="text-muted-foreground">{detail.observation}</p>
+                          <Progress 
+                            value={prediction.confidence} 
+                            className={`h-2 mt-2 ${i === 0 ? "bg-medease-500" : ""}`}
+                          />
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="font-medium mb-2">Recommendations</h3>
-                    <ul className="list-disc pl-5 space-y-2">
-                      {analysisResult.recommendations.map((rec: string, i: number) => (
-                        <li key={i}>{rec}</li>
-                      ))}
-                    </ul>
+                    <h3 className="font-medium mb-2">Knee Implant Information</h3>
+                    {analysisResult.prediction && (
+                      <div className="border rounded-lg p-4">
+                        <p className="mb-2">
+                          The analysis identified this as a <strong>{analysisResult.prediction}</strong> knee implant.
+                        </p>
+                        <p>
+                          This AI model can identify 14 different types of knee implants from X-ray images. The results 
+                          provide the model's confidence level for each possible match, with the highest confidence prediction shown first.
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="border-t pt-4">
@@ -391,9 +403,7 @@ export default function XRayAnalysisPage() {
                     <div className="flex items-start">
                       <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
                       <p>
-                        This AI analysis is for informational purposes only and should not replace 
-                        professional medical diagnosis. Always consult with a qualified healthcare 
-                        provider for proper interpretation of X-ray images.
+                        This AI analysis is for informational purposes only and should not replace professional medical diagnosis. Always consult with a qualified healthcare provider for proper interpretation of X-ray images.
                       </p>
                     </div>
                   </div>
@@ -421,11 +431,10 @@ export default function XRayAnalysisPage() {
               <div>
                 <h3 className="font-medium mb-2">Supported X-Ray Types</h3>
                 <ul className="list-disc pl-5 space-y-2">
-                  <li>Chest X-rays (PA and lateral views)</li>
-                  <li>Extremity X-rays (arms, hands, legs, feet)</li>
-                  <li>Abdominal X-rays</li>
-                  <li>Spinal X-rays (cervical, thoracic, lumbar)</li>
-                  <li>Dental X-rays</li>
+                  <li>This analyzer is specifically designed to identify knee implants</li>
+                  <li>It can recognize 14 different types of knee implants</li>
+                  <li>For best results, use clear anteroposterior (AP) and lateral knee X-rays</li>
+                  <li>Ensure the knee implant is clearly visible in the image</li>
                 </ul>
               </div>
               
@@ -445,10 +454,7 @@ export default function XRayAnalysisPage() {
                   <div>
                     <p className="font-medium">Important Disclaimer</p>
                     <p className="mt-1 text-sm">
-                      This X-ray analysis tool is intended for educational and informational purposes only. 
-                      The AI analysis should not be used as a substitute for professional medical advice, 
-                      diagnosis, or treatment. Always seek the advice of your physician or other qualified 
-                      health provider with any questions you may have regarding a medical condition.
+                      This X-ray analysis tool is intended for educational and informational purposes only. The AI analysis should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
                     </p>
                   </div>
                 </div>

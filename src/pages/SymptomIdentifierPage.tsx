@@ -1,23 +1,96 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Image as ImageIcon, Info, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function SymptomIdentifierPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image less than 5MB in size.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPEG, PNG, etc).",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
         setAnalysisResult(null);
+        toast({
+          title: "Image uploaded",
+          description: "Your image has been uploaded successfully. Click 'Analyze Image' to continue."
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image less than 5MB in size.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPEG, PNG, etc).",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string);
+        setAnalysisResult(null);
+        toast({
+          title: "Image uploaded",
+          description: "Your image has been uploaded successfully. Click 'Analyze Image' to continue."
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -43,6 +116,10 @@ export default function SymptomIdentifierPage() {
         severity: "Mild to Moderate"
       });
       setAnalyzing(false);
+      toast({
+        title: "Analysis complete",
+        description: "Your image has been analyzed. View the results on the right panel."
+      });
     }, 2000);
   };
   
@@ -56,7 +133,11 @@ export default function SymptomIdentifierPage() {
       </div>
       
       {!uploadedImage ? (
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12">
+        <div 
+          className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12"
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
           <div className="text-center">
             <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
@@ -69,6 +150,7 @@ export default function SymptomIdentifierPage() {
                 accept="image/*"
                 className="hidden"
                 onChange={handleImageUpload}
+                ref={fileInputRef}
               />
               <Button variant="outline" className="mx-auto">
                 <Upload className="h-4 w-4 mr-2" />
@@ -88,7 +170,16 @@ export default function SymptomIdentifierPage() {
           </div>
           
           <div className="flex justify-center gap-4 mt-4">
-            <Button variant="outline" onClick={() => setUploadedImage(null)}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setUploadedImage(null);
+                setAnalysisResult(null);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }}
+            >
               Change Image
             </Button>
             <Button

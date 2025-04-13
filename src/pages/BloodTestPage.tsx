@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, FileText, AlertCircle, ChevronDown, Printer, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   LineChart, 
   Line, 
@@ -16,8 +17,44 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
+// Interface for a blood test result
+interface BloodTestResult {
+  name: string;
+  value: number;
+  unit: string;
+  normal: string;
+  status: "normal" | "high" | "low";
+}
+
+// Interface for a blood test category
+interface BloodTestCategory {
+  category: string;
+  tests: BloodTestResult[];
+}
+
+// Interface for historical data point
+interface HistoricalDataPoint {
+  date: string;
+  cholesterol: number;
+  glucose: number;
+  wbc: number;
+}
+
+// Interface for blood test data
+interface BloodTestData {
+  date: string;
+  labName: string;
+  patient: {
+    name: string;
+    age: number;
+    gender: string;
+  };
+  results: BloodTestCategory[];
+  historicalData: HistoricalDataPoint[];
+}
+
 // Mock data for blood test results
-const bloodTestData = {
+const bloodTestData: BloodTestData = {
   date: "April 8, 2023",
   labName: "HealthLabs Medical Center",
   patient: {
@@ -69,19 +106,132 @@ const bloodTestData = {
 export default function BloodTestPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [resultsVisible, setResultsVisible] = useState(true);
+  const [resultsVisible, setResultsVisible] = useState(false);
+  const [categoryExpanded, setCategoryExpanded] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select a file less than 10MB in size.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file type (PDF or images)
+      if (!file.type.startsWith('application/pdf') && !file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a PDF or image file.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setUploadedFile(file);
+      toast({
+        title: "File uploaded",
+        description: "Your blood test report has been uploaded. Processing will begin shortly."
+      });
+      
       // In a real app, this would trigger the file analysis
       setAnalyzing(true);
       setTimeout(() => {
         setAnalyzing(false);
         setResultsVisible(true);
+        toast({
+          title: "Analysis complete",
+          description: "Your blood test report has been analyzed. View the results on the right panel."
+        });
       }, 2000);
     }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select a file less than 10MB in size.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file type (PDF or images)
+      if (!file.type.startsWith('application/pdf') && !file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a PDF or image file.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setUploadedFile(file);
+      toast({
+        title: "File uploaded",
+        description: "Your blood test report has been uploaded. Processing will begin shortly."
+      });
+      
+      // In a real app, this would trigger the file analysis
+      setAnalyzing(true);
+      setTimeout(() => {
+        setAnalyzing(false);
+        setResultsVisible(true);
+        toast({
+          title: "Analysis complete",
+          description: "Your blood test report has been analyzed. View the results on the right panel."
+        });
+      }, 2000);
+    }
+  };
+  
+  const toggleCategoryExpanded = (category: string) => {
+    setCategoryExpanded(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category) 
+        : [...prev, category]
+    );
+  };
+  
+  const handleDownloadReport = () => {
+    toast({
+      title: "Report downloaded",
+      description: "Your blood test analysis report has been downloaded."
+    });
+  };
+  
+  const handlePrintReport = () => {
+    toast({
+      title: "Printing report",
+      description: "Your blood test analysis report has been sent to the printer."
+    });
+  };
+  
+  const handleShareWithDoctor = () => {
+    toast({
+      title: "Report shared",
+      description: "Your blood test analysis report has been shared with your doctor."
+    });
   };
   
   const UploadPanel = () => (
@@ -90,7 +240,11 @@ export default function BloodTestPage() {
       
       {!uploadedFile ? (
         <div className="mt-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+          <div 
+            className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
               Drag and drop your blood test report PDF or image,
@@ -103,6 +257,7 @@ export default function BloodTestPage() {
                 accept=".pdf,image/*"
                 className="hidden"
                 onChange={handleFileUpload}
+                ref={fileInputRef}
               />
               <Button variant="outline" className="mx-auto">
                 <Upload className="h-4 w-4 mr-2" />
@@ -161,7 +316,13 @@ export default function BloodTestPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setUploadedFile(null)}
+                onClick={() => {
+                  setUploadedFile(null);
+                  setResultsVisible(false);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                  }
+                }}
                 className="text-red-500 hover:text-red-700"
               >
                 Remove
@@ -189,11 +350,18 @@ export default function BloodTestPage() {
               </p>
               
               <div className="flex space-x-4">
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={handleDownloadReport}
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Download Analysis
                 </Button>
-                <Button className="flex-1 bg-medease-500 hover:bg-medease-600">
+                <Button 
+                  className="flex-1 bg-medease-500 hover:bg-medease-600"
+                  onClick={handlePrintReport}
+                >
                   <Printer className="h-4 w-4 mr-2" />
                   Print Report
                 </Button>
@@ -273,42 +441,54 @@ export default function BloodTestPage() {
             <div className="space-y-4">
               {bloodTestData.results.map((category, index) => (
                 <div key={index} className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 flex justify-between items-center">
+                  <div 
+                    className="bg-gray-50 dark:bg-gray-800 p-4 flex justify-between items-center cursor-pointer"
+                    onClick={() => toggleCategoryExpanded(category.category)}
+                  >
                     <h3 className="font-medium">{category.category}</h3>
-                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                    <ChevronDown 
+                      className={`h-5 w-5 text-gray-500 transition-transform ${
+                        categoryExpanded.includes(category.category) ? 'transform rotate-180' : ''
+                      }`} 
+                    />
                   </div>
-                  <div className="p-4">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-sm text-muted-foreground">
-                          <th className="text-left font-normal pb-2">Test</th>
-                          <th className="text-left font-normal pb-2">Result</th>
-                          <th className="text-left font-normal pb-2">Unit</th>
-                          <th className="text-left font-normal pb-2">Reference</th>
-                          <th className="text-left font-normal pb-2">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {category.tests.map((test, testIndex) => (
-                          <tr key={testIndex} className="border-t">
-                            <td className="py-3">{test.name}</td>
-                            <td className="py-3 font-medium">{test.value}</td>
-                            <td className="py-3 text-muted-foreground">{test.unit}</td>
-                            <td className="py-3 text-muted-foreground">{test.normal}</td>
-                            <td className="py-3">
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                test.status === "normal" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                {test.status === "normal" ? "Normal" : "High"}
-                              </span>
-                            </td>
+                  {categoryExpanded.includes(category.category) && (
+                    <div className="p-4">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-sm text-muted-foreground">
+                            <th className="text-left font-normal pb-2">Test</th>
+                            <th className="text-left font-normal pb-2">Result</th>
+                            <th className="text-left font-normal pb-2">Unit</th>
+                            <th className="text-left font-normal pb-2">Reference</th>
+                            <th className="text-left font-normal pb-2">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {category.tests.map((test, testIndex) => (
+                            <tr key={testIndex} className="border-t">
+                              <td className="py-3">{test.name}</td>
+                              <td className="py-3 font-medium">{test.value}</td>
+                              <td className="py-3 text-muted-foreground">{test.unit}</td>
+                              <td className="py-3 text-muted-foreground">{test.normal}</td>
+                              <td className="py-3">
+                                <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                                  test.status === "normal" 
+                                    ? "bg-green-100 text-green-800" 
+                                    : test.status === "high"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                }`}>
+                                  {test.status === "normal" ? "Normal" : 
+                                   test.status === "high" ? "High" : "Low"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -329,11 +509,18 @@ export default function BloodTestPage() {
             </div>
             
             <div className="mt-8 flex space-x-4">
-              <Button variant="outline" className="flex-1">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={handleDownloadReport}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>
-              <Button className="flex-1 bg-medease-500 hover:bg-medease-600">
+              <Button 
+                className="flex-1 bg-medease-500 hover:bg-medease-600"
+                onClick={handleShareWithDoctor}
+              >
                 Share with Doctor
               </Button>
             </div>

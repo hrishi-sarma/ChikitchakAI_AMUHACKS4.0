@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,20 +7,98 @@ import { Upload, Image as ImageIcon, Info, AlertCircle, ZoomIn, ZoomOut, RotateC
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function XRayAnalysisPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
   const [zoom, setZoom] = useState(100);
+  const [rotation, setRotation] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image less than 10MB in size.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPEG, PNG, etc).",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
         setAnalysisResult(null);
+        setZoom(100);
+        setRotation(0);
+        toast({
+          title: "X-ray image uploaded",
+          description: "Your image has been uploaded successfully. Click 'Analyze X-Ray' to continue."
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image less than 10MB in size.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPEG, PNG, etc).",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string);
+        setAnalysisResult(null);
+        setZoom(100);
+        setRotation(0);
+        toast({
+          title: "X-ray image uploaded",
+          description: "Your image has been uploaded successfully. Click 'Analyze X-Ray' to continue."
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -65,6 +143,10 @@ export default function XRayAnalysisPage() {
         ]
       });
       setAnalyzing(false);
+      toast({
+        title: "Analysis complete",
+        description: "Your X-ray has been analyzed. View the detailed results in the right panel."
+      });
     }, 2500);
   };
   
@@ -76,13 +158,21 @@ export default function XRayAnalysisPage() {
     setZoom(Math.max(zoom - 20, 60));
   };
   
+  const handleRotate = () => {
+    setRotation((rotation + 90) % 360);
+  };
+  
   const ImageViewerPanel = () => (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b">
         <h3 className="font-medium mb-2">X-Ray Image Viewer</h3>
         
         {!uploadedImage ? (
-          <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12 mt-4">
+          <div 
+            className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12 mt-4"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             <div className="text-center">
               <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">
@@ -95,6 +185,7 @@ export default function XRayAnalysisPage() {
                   accept="image/*"
                   className="hidden"
                   onChange={handleImageUpload}
+                  ref={fileInputRef}
                 />
                 <Button variant="outline" className="mx-auto">
                   <Upload className="h-4 w-4 mr-2" />
@@ -105,7 +196,19 @@ export default function XRayAnalysisPage() {
           </div>
         ) : (
           <div className="flex space-x-2 mb-4">
-            <Button variant="outline" size="sm" onClick={() => setUploadedImage(null)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setUploadedImage(null);
+                setAnalysisResult(null);
+                setZoom(100);
+                setRotation(0);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }}
+            >
               Change Image
             </Button>
             <Button
@@ -128,7 +231,7 @@ export default function XRayAnalysisPage() {
               <Button variant="outline" size="sm" onClick={handleZoomIn}>
                 <ZoomIn className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleRotate}>
                 <RotateCw className="h-4 w-4" />
               </Button>
             </div>
@@ -153,7 +256,7 @@ export default function XRayAnalysisPage() {
           <div 
             className="relative flex items-center justify-center"
             style={{ 
-              transform: `scale(${zoom / 100})`,
+              transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
               transition: 'transform 0.2s ease-out'
             }}
           >
@@ -263,10 +366,23 @@ export default function XRayAnalysisPage() {
                   
                   <div className="border-t pt-4">
                     <h3 className="font-medium mb-2">Next Steps</h3>
-                    <Button className="w-full bg-medease-500 hover:bg-medease-600 mb-2">
+                    <Button 
+                      className="w-full bg-medease-500 hover:bg-medease-600 mb-2"
+                      onClick={() => toast({
+                        title: "Report shared",
+                        description: "Your X-ray analysis report has been shared with your doctor."
+                      })}
+                    >
                       Share with My Doctor
                     </Button>
-                    <Button variant="outline" className="w-full">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => toast({
+                        title: "Report downloaded",
+                        description: "Your X-ray analysis report has been downloaded."
+                      })}
+                    >
                       Download Analysis Report
                     </Button>
                   </div>

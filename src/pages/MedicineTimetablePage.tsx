@@ -1,8 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FeatureLayout from "@/components/FeatureLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Clock, 
   Calendar, 
@@ -16,59 +17,98 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
-// Mock data
-const initialMedications = [
-  {
-    id: "1",
-    name: "Amoxicillin",
-    dosage: "500mg",
-    frequency: "3x daily",
-    startDate: "2023-04-01",
-    endDate: "2023-04-14",
-    timeSlots: ["08:00", "13:00", "20:00"],
-    notes: "Take with food",
-    color: "bg-red-500"
-  },
-  {
-    id: "2",
-    name: "Vitamin D",
-    dosage: "1000 IU",
-    frequency: "1x daily",
-    startDate: "2023-01-01",
-    endDate: "2023-12-31",
-    timeSlots: ["09:00"],
-    notes: "Take with breakfast",
-    color: "bg-yellow-500"
-  },
-  {
-    id: "3",
-    name: "Ibuprofen",
-    dosage: "200mg",
-    frequency: "As needed",
-    startDate: "2023-04-01",
-    endDate: "2023-04-30",
-    timeSlots: ["08:00", "20:00"],
-    notes: "Take for headaches",
-    color: "bg-blue-500"
-  },
-  {
-    id: "4",
-    name: "Metformin",
-    dosage: "500mg",
-    frequency: "2x daily",
-    startDate: "2023-01-01",
-    endDate: "2023-12-31",
-    timeSlots: ["07:30", "19:30"],
-    notes: "Take with meals",
-    color: "bg-green-500"
+// Types for medications
+type Medication = {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  startDate: string;
+  endDate: string;
+  timeSlots: string[];
+  notes: string;
+  color: string;
+  takenToday?: boolean;
+};
+
+// Get medications from localStorage or use initial data
+const getInitialMedications = (): Medication[] => {
+  const saved = localStorage.getItem('medications');
+  if (saved) {
+    return JSON.parse(saved);
   }
-];
+  
+  return [
+    {
+      id: "1",
+      name: "Amoxicillin",
+      dosage: "500mg",
+      frequency: "3x daily",
+      startDate: "2023-04-01",
+      endDate: "2023-04-14",
+      timeSlots: ["08:00", "13:00", "20:00"],
+      notes: "Take with food",
+      color: "bg-red-500"
+    },
+    {
+      id: "2",
+      name: "Vitamin D",
+      dosage: "1000 IU",
+      frequency: "1x daily",
+      startDate: "2023-01-01",
+      endDate: "2023-12-31",
+      timeSlots: ["09:00"],
+      notes: "Take with breakfast",
+      color: "bg-yellow-500"
+    },
+    {
+      id: "3",
+      name: "Ibuprofen",
+      dosage: "200mg",
+      frequency: "As needed",
+      startDate: "2023-04-01",
+      endDate: "2023-04-30",
+      timeSlots: ["08:00", "20:00"],
+      notes: "Take for headaches",
+      color: "bg-blue-500"
+    },
+    {
+      id: "4",
+      name: "Metformin",
+      dosage: "500mg",
+      frequency: "2x daily",
+      startDate: "2023-01-01",
+      endDate: "2023-12-31",
+      timeSlots: ["07:30", "19:30"],
+      notes: "Take with meals",
+      color: "bg-green-500"
+    }
+  ];
+};
 
 export default function MedicineTimetablePage() {
-  const [medications, setMedications] = useState(initialMedications);
+  const [medications, setMedications] = useState<Medication[]>(getInitialMedications);
   const [formOpen, setFormOpen] = useState(false);
   const [editingMedicationId, setEditingMedicationId] = useState<string | null>(null);
+  const [newMedication, setNewMedication] = useState<Partial<Medication>>({
+    name: "",
+    dosage: "",
+    frequency: "",
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: "",
+    timeSlots: [],
+    notes: "",
+    color: "bg-blue-500"
+  });
+  const [customTimeSlot, setCustomTimeSlot] = useState("");
+  const { toast } = useToast();
+  
+  // Save medications to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('medications', JSON.stringify(medications));
+  }, [medications]);
   
   const generateTimeSlots = () => {
     const slots = [];
@@ -84,13 +124,133 @@ export default function MedicineTimetablePage() {
     return medications.filter(med => med.timeSlots.includes(slot));
   };
   
-  const getEditingMedication = () => {
-    if (!editingMedicationId) return null;
-    return medications.find(med => med.id === editingMedicationId) || null;
-  };
-  
   const handleDeleteMedication = (id: string) => {
     setMedications(medications.filter(med => med.id !== id));
+    toast({
+      title: "Medication deleted",
+      description: "The medication has been removed from your schedule.",
+      variant: "destructive"
+    });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewMedication(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleTimeSlotToggle = (time: string) => {
+    setNewMedication(prev => {
+      const currentSlots = prev.timeSlots || [];
+      const updatedSlots = currentSlots.includes(time)
+        ? currentSlots.filter(t => t !== time)
+        : [...currentSlots, time];
+      
+      return { ...prev, timeSlots: updatedSlots };
+    });
+  };
+
+  const handleAddCustomTimeSlot = () => {
+    if (!customTimeSlot) return;
+    
+    // Basic validation for time format
+    const isValidTime = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(customTimeSlot);
+    
+    if (isValidTime) {
+      setNewMedication(prev => {
+        const currentSlots = prev.timeSlots || [];
+        if (!currentSlots.includes(customTimeSlot)) {
+          return { ...prev, timeSlots: [...currentSlots, customTimeSlot] };
+        }
+        return prev;
+      });
+      setCustomTimeSlot("");
+    } else {
+      toast({
+        title: "Invalid time format",
+        description: "Please use the format HH:MM (e.g., 08:30)",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleColorSelect = (color: string) => {
+    setNewMedication(prev => ({ ...prev, color }));
+  };
+  
+  const handleSaveMedication = () => {
+    if (!newMedication.name || !newMedication.dosage || !newMedication.startDate || (newMedication.timeSlots?.length || 0) === 0) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields and select at least one time slot.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (editingMedicationId) {
+      // Update existing medication
+      setMedications(prev => 
+        prev.map(med => 
+          med.id === editingMedicationId 
+            ? { ...med, ...newMedication, id: med.id } as Medication
+            : med
+        )
+      );
+      toast({
+        title: "Medication updated",
+        description: "Your medication has been updated successfully."
+      });
+    } else {
+      // Add new medication
+      const newMed: Medication = {
+        ...newMedication as Omit<Medication, 'id'>,
+        id: Date.now().toString(),
+      } as Medication;
+      
+      setMedications(prev => [...prev, newMed]);
+      toast({
+        title: "Medication added",
+        description: "Your new medication has been added to your schedule."
+      });
+    }
+    
+    // Reset form and close dialog
+    setNewMedication({
+      name: "",
+      dosage: "",
+      frequency: "",
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: "",
+      timeSlots: [],
+      notes: "",
+      color: "bg-blue-500"
+    });
+    setFormOpen(false);
+    setEditingMedicationId(null);
+  };
+  
+  const handleMarkTaken = (id: string) => {
+    setMedications(prev => 
+      prev.map(med => 
+        med.id === id 
+          ? { ...med, takenToday: !med.takenToday } 
+          : med
+      )
+    );
+    
+    toast({
+      title: "Medication status updated",
+      description: "Your medication has been marked as taken."
+    });
+  };
+  
+  const handleEditMedication = (id: string) => {
+    const medToEdit = medications.find(med => med.id === id);
+    if (medToEdit) {
+      setNewMedication(medToEdit);
+      setEditingMedicationId(id);
+      setFormOpen(true);
+    }
   };
   
   const TimetablePanel = () => (
@@ -122,8 +282,17 @@ export default function MedicineTimetablePage() {
                           <div className="font-medium">{med.name}</div>
                           <div className="text-sm text-muted-foreground">{med.dosage}</div>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Check className="h-4 w-4 text-medgreen-500" />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className={`h-8 w-8 p-0 ${med.takenToday ? 'text-medgreen-500' : ''}`}
+                          onClick={() => handleMarkTaken(med.id)}
+                        >
+                          {med.takenToday ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 border rounded-full" />
+                          )}
                         </Button>
                       </div>
                     ))}
@@ -154,10 +323,7 @@ export default function MedicineTimetablePage() {
                       variant="ghost" 
                       size="sm" 
                       className="h-8 w-8 p-0"
-                      onClick={() => {
-                        setEditingMedicationId(med.id);
-                        setFormOpen(true);
-                      }}
+                      onClick={() => handleEditMedication(med.id)}
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
@@ -176,7 +342,8 @@ export default function MedicineTimetablePage() {
                   <div className="flex items-center">
                     <Calendar className="h-3 w-3 mr-2 text-medease-500" />
                     <span>
-                      {new Date(med.startDate).toLocaleDateString()} - {new Date(med.endDate).toLocaleDateString()}
+                      {new Date(med.startDate).toLocaleDateString()} - 
+                      {med.endDate ? new Date(med.endDate).toLocaleDateString() : "Ongoing"}
                     </span>
                   </div>
                   
@@ -205,7 +372,19 @@ export default function MedicineTimetablePage() {
         <Dialog open={formOpen} onOpenChange={setFormOpen}>
           <DialogTrigger asChild>
             <Button 
-              onClick={() => setEditingMedicationId(null)}
+              onClick={() => {
+                setEditingMedicationId(null);
+                setNewMedication({
+                  name: "",
+                  dosage: "",
+                  frequency: "",
+                  startDate: new Date().toISOString().split('T')[0],
+                  endDate: "",
+                  timeSlots: [],
+                  notes: "",
+                  color: "bg-blue-500"
+                });
+              }}
               className="bg-medease-500 hover:bg-medease-600"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -223,7 +402,9 @@ export default function MedicineTimetablePage() {
                 <label htmlFor="name" className="text-sm font-medium">Medication Name</label>
                 <Input
                   id="name"
-                  defaultValue={getEditingMedication()?.name || ""}
+                  name="name"
+                  value={newMedication.name || ""}
+                  onChange={handleInputChange}
                   placeholder="Enter medication name"
                 />
               </div>
@@ -233,7 +414,9 @@ export default function MedicineTimetablePage() {
                   <label htmlFor="dosage" className="text-sm font-medium">Dosage</label>
                   <Input
                     id="dosage"
-                    defaultValue={getEditingMedication()?.dosage || ""}
+                    name="dosage"
+                    value={newMedication.dosage || ""}
+                    onChange={handleInputChange}
                     placeholder="e.g., 500mg"
                   />
                 </div>
@@ -242,7 +425,9 @@ export default function MedicineTimetablePage() {
                   <label htmlFor="frequency" className="text-sm font-medium">Frequency</label>
                   <Input
                     id="frequency"
-                    defaultValue={getEditingMedication()?.frequency || ""}
+                    name="frequency"
+                    value={newMedication.frequency || ""}
+                    onChange={handleInputChange}
                     placeholder="e.g., 3x daily"
                   />
                 </div>
@@ -253,8 +438,10 @@ export default function MedicineTimetablePage() {
                   <label htmlFor="startDate" className="text-sm font-medium">Start Date</label>
                   <Input
                     id="startDate"
+                    name="startDate"
                     type="date"
-                    defaultValue={getEditingMedication()?.startDate || new Date().toISOString().split('T')[0]}
+                    value={newMedication.startDate || ""}
+                    onChange={handleInputChange}
                   />
                 </div>
                 
@@ -262,8 +449,10 @@ export default function MedicineTimetablePage() {
                   <label htmlFor="endDate" className="text-sm font-medium">End Date</label>
                   <Input
                     id="endDate"
+                    name="endDate"
                     type="date"
-                    defaultValue={getEditingMedication()?.endDate || ""}
+                    value={newMedication.endDate || ""}
+                    onChange={handleInputChange}
                   />
                 </div>
               </div>
@@ -280,24 +469,52 @@ export default function MedicineTimetablePage() {
                         <input
                           type="checkbox"
                           id={`time-${time}`}
-                          defaultChecked={getEditingMedication()?.timeSlots.includes(time)}
+                          checked={newMedication.timeSlots?.includes(time) || false}
+                          onChange={() => handleTimeSlotToggle(time)}
                         />
                         <label htmlFor={`time-${time}`}>{time}</label>
                       </div>
                     ))}
                   </div>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Custom Time
-                  </Button>
+                  <div className="flex mt-2">
+                    <Input
+                      value={customTimeSlot}
+                      onChange={(e) => setCustomTimeSlot(e.target.value)}
+                      placeholder="HH:MM"
+                      className="mr-2"
+                    />
+                    <Button variant="outline" size="sm" onClick={handleAddCustomTimeSlot}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                  
+                  {(newMedication.timeSlots?.length || 0) > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium mb-1">Selected times:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {newMedication.timeSlots?.map(time => (
+                          <div key={time} className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm flex items-center">
+                            {time}
+                            <X 
+                              className="h-3 w-3 ml-1 cursor-pointer" 
+                              onClick={() => handleTimeSlotToggle(time)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               
               <div className="space-y-2">
                 <label htmlFor="notes" className="text-sm font-medium">Notes</label>
-                <Input
+                <Textarea
                   id="notes"
-                  defaultValue={getEditingMedication()?.notes || ""}
+                  name="notes"
+                  value={newMedication.notes || ""}
+                  onChange={handleInputChange}
                   placeholder="Additional instructions or notes"
                 />
               </div>
@@ -308,8 +525,10 @@ export default function MedicineTimetablePage() {
                   {["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500"].map(color => (
                     <button
                       key={color}
+                      type="button"
+                      onClick={() => handleColorSelect(color)}
                       className={`w-6 h-6 rounded-full ${color} ${
-                        getEditingMedication()?.color === color ? "ring-2 ring-offset-2 ring-medease-500" : ""
+                        newMedication.color === color ? "ring-2 ring-offset-2 ring-medease-500" : ""
                       }`}
                     />
                   ))}
@@ -321,7 +540,7 @@ export default function MedicineTimetablePage() {
               <Button variant="outline" onClick={() => setFormOpen(false)}>
                 Cancel
               </Button>
-              <Button className="bg-medease-500 hover:bg-medease-600" onClick={() => setFormOpen(false)}>
+              <Button className="bg-medease-500 hover:bg-medease-600" onClick={handleSaveMedication}>
                 {editingMedicationId ? "Update" : "Add"} Medication
               </Button>
             </DialogFooter>
@@ -337,31 +556,20 @@ export default function MedicineTimetablePage() {
           </h3>
           
           <div className="space-y-3">
-            <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-md shadow-sm">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-                <div>
-                  <span className="font-medium">Amoxicillin</span>
-                  <span className="text-sm text-muted-foreground ml-2">500mg</span>
+            {medications.slice(0, 2).map(med => (
+              <div key={med.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-md shadow-sm">
+                <div className="flex items-center">
+                  <div className={`w-2 h-2 ${med.color} rounded-full mr-2`}></div>
+                  <div>
+                    <span className="font-medium">{med.name}</span>
+                    <span className="text-sm text-muted-foreground ml-2">{med.dosage}</span>
+                  </div>
+                </div>
+                <div className="text-sm font-medium text-medease-600">
+                  {med.timeSlots[0]}
                 </div>
               </div>
-              <div className="text-sm font-medium text-medease-600">
-                In 25 minutes
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-md shadow-sm">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                <div>
-                  <span className="font-medium">Ibuprofen</span>
-                  <span className="text-sm text-muted-foreground ml-2">200mg</span>
-                </div>
-              </div>
-              <div className="text-sm font-medium text-medease-600">
-                Today, 8:00 PM
-              </div>
-            </div>
+            ))}
           </div>
         </div>
         

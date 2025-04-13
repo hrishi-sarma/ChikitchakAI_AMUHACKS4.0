@@ -1,10 +1,11 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import FeatureLayout from "@/components/FeatureLayout";
+import { useToast } from "@/components/ui/use-toast";
 
 type Message = {
   id: string;
@@ -22,17 +23,59 @@ const demoResponses = [
   "Based on your description, it's not an emergency, but you should schedule an appointment with your primary care physician this week."
 ];
 
+// Keywords to match with specific responses
+const keywordResponses: Record<string, string> = {
+  "headache": "Headaches can have many causes including stress, dehydration, or tension. For occasional headaches, over-the-counter pain relievers like acetaminophen or ibuprofen may help. If headaches are severe or persistent, please consult a doctor.",
+  "cold": "Common cold symptoms include runny nose, congestion, sore throat, and cough. Rest, hydration, and over-the-counter cold medications can help manage symptoms. If fever is high or symptoms worsen after 7-10 days, consult a healthcare provider.",
+  "fever": "A fever is often a sign that your body is fighting an infection. For adults, a temperature above 100.4°F (38°C) is considered a fever. Rest, hydration, and fever reducers like acetaminophen may help. If the fever is high or persists for more than 2-3 days, seek medical attention.",
+  "allergy": "Allergies can cause symptoms like sneezing, runny nose, itchy eyes, and skin rashes. Antihistamines, nasal sprays, and avoiding allergen triggers can help manage symptoms. For severe allergic reactions, seek immediate medical attention.",
+  "diabetes": "Diabetes is a chronic condition that affects how your body processes blood sugar. Managing diabetes typically involves monitoring blood sugar levels, maintaining a healthy diet, regular exercise, and sometimes medication or insulin therapy. Regular checkups with your healthcare provider are important.",
+  "doctor": "I can help you find doctors in your area. You can also check our 'Find Doctors' section on this app to search for healthcare providers by specialty or location.",
+  "emergency": "If you're experiencing a medical emergency such as severe chest pain, difficulty breathing, severe bleeding, or loss of consciousness, call emergency services (911) immediately or go to the nearest emergency room."
+};
+
 export default function ChatbotPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "Hello! I'm MedEase AI. How can I assist you with your health questions today?",
-      sender: "bot",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Try to load messages from localStorage
+    const savedMessages = localStorage.getItem('chatMessages');
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        // Ensure timestamps are Date objects
+        return parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      } catch (e) {
+        console.error('Error parsing saved messages', e);
+      }
+    }
+    
+    // Default initial message
+    return [
+      {
+        id: "1",
+        text: "Hello! I'm MedEase AI. How can I assist you with your health questions today?",
+        sender: "bot",
+        timestamp: new Date(),
+      }
+    ];
+  });
+  
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('chatMessages', JSON.stringify(messages));
+  }, [messages]);
+  
+  // Scroll to bottom whenever messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;
@@ -49,13 +92,28 @@ export default function ChatbotPage() {
     setInput("");
     setLoading(true);
     
-    // Simulate AI response
+    // Simulate AI response with a delay
     setTimeout(() => {
-      const randomResponse = demoResponses[Math.floor(Math.random() * demoResponses.length)];
+      // Check for keyword matches first
+      const lowerInput = input.toLowerCase();
+      let responseText = "";
+      
+      // Check for keyword matches
+      for (const [keyword, response] of Object.entries(keywordResponses)) {
+        if (lowerInput.includes(keyword)) {
+          responseText = response;
+          break;
+        }
+      }
+      
+      // If no keyword matches, use a random response
+      if (!responseText) {
+        responseText = demoResponses[Math.floor(Math.random() * demoResponses.length)];
+      }
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
+        text: responseText,
         sender: "bot",
         timestamp: new Date(),
       };
@@ -63,6 +121,21 @@ export default function ChatbotPage() {
       setMessages((prev) => [...prev, botMessage]);
       setLoading(false);
     }, 1000);
+  };
+  
+  const clearChat = () => {
+    const initialMessage = {
+      id: Date.now().toString(),
+      text: "Hello! I'm MedEase AI. How can I assist you with your health questions today?",
+      sender: "bot",
+      timestamp: new Date(),
+    };
+    
+    setMessages([initialMessage]);
+    toast({
+      title: "Chat cleared",
+      description: "All previous messages have been cleared."
+    });
   };
 
   const ChatMessages = () => (
@@ -106,6 +179,7 @@ export default function ChatbotPage() {
           </div>
         </div>
       ))}
+      <div ref={messagesEndRef} />
       {loading && (
         <div className="flex justify-start">
           <div className="flex flex-row">
@@ -168,7 +242,32 @@ export default function ChatbotPage() {
           <li>Finding local healthcare providers</li>
           <li>Explaining medical terminology</li>
         </ul>
-        <div className="bg-medease-50 dark:bg-medease-900/30 p-4 rounded-lg mt-8">
+        
+        <div className="mt-4">
+          <h3 className="font-medium mb-2">Try asking about:</h3>
+          <div className="flex flex-wrap gap-2">
+            {["Headache", "Allergies", "Cold symptoms", "Diabetes", "Finding a doctor"].map(suggestion => (
+              <Button 
+                key={suggestion} 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setInput(suggestion);
+                }}
+              >
+                {suggestion}
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="mt-auto">
+          <Button variant="outline" className="w-full" onClick={clearChat}>
+            Clear Conversation
+          </Button>
+        </div>
+        
+        <div className="bg-medease-50 dark:bg-medease-900/30 p-4 rounded-lg mt-4">
           <p className="text-sm text-muted-foreground">
             <strong>Important:</strong> This AI assistant provides general information only and is not a substitute for professional medical advice, diagnosis, or treatment.
           </p>

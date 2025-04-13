@@ -56,7 +56,7 @@ export default function ChatbotPage() {
       {
         id: "1",
         text: "Hello! I'm MedEase AI. How can I assist you with your health questions today?",
-        sender: "bot",
+        sender: "bot" as const,
         timestamp: new Date(),
       }
     ];

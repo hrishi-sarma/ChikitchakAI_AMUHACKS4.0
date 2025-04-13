@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Stethoscope, UserSearch, Pill, FileBar, Image as ImageIcon, MessagesSquare, BookOpen } from "lucide-react";
+import { Stethoscope, UserSearch, Pill, FileText, Image as ImageIcon, MessagesSquare, BookOpen } from "lucide-react";
 
 // Define feature data for the homepage
 const features = [
@@ -37,7 +37,7 @@ const features = [
   {
     title: "Blood Test Analysis",
     description: "Upload and analyze your blood test results for easy interpretation.",
-    icon: <FileBar className="h-10 w-10 text-amber-500" />,
+    icon: <FileText className="h-10 w-10 text-amber-500" />,
     path: "/blood-test",
     color: "bg-amber-50 dark:bg-amber-900/30"
   },

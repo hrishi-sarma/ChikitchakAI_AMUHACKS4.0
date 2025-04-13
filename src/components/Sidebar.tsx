@@ -118,7 +118,16 @@ export function Sidebar() {
           />
         </Link>
 
-        {/* Health Blog */}
+        {/* Skin */}
+        <Link to="/skin">
+          <SidebarIcon 
+            icon={Camera} 
+            tooltip="Skin Analyzer" 
+            active={isActive("/skin")}
+          />
+        </Link>
+
+        {/* Blog */}
         <Link to="/blog">
           <SidebarIcon 
             icon={BookOpen} 

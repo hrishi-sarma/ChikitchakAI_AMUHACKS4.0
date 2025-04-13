@@ -215,7 +215,9 @@ export default function ChatbotPage() {
           placeholder="Type your health question..."
           className="flex-1"
           disabled={loading}
+          autoFocus  // This will automatically focus the input on render
         />
+              
         <Button 
           type="submit" 
           className="bg-medease-500 hover:bg-medease-600"

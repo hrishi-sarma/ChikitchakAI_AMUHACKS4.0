@@ -17,6 +17,7 @@ import XRayAnalysisPage from "./pages/XRayAnalysisPage";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
 import NotFound from "./pages/NotFound";
+import Skin from "./pages/SkinAnalyzer";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/xray-analysis" element={<XRayAnalysisPage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
+              <Route path="/skin" element={<Skin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

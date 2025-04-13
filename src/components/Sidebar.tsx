@@ -10,7 +10,8 @@ import {
   FileX, 
   Sun, 
   Moon, 
-  Stethoscope 
+  Stethoscope,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./ThemeProvider";
@@ -50,7 +51,7 @@ export function Sidebar() {
   };
 
   const isActive = (path: string) => {
-    return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   return (
@@ -113,6 +114,15 @@ export function Sidebar() {
             icon={FileX} 
             tooltip="X-Ray Analysis" 
             active={isActive("/xray-analysis")}
+          />
+        </Link>
+
+        {/* Health Blog */}
+        <Link to="/blog">
+          <SidebarIcon 
+            icon={BookOpen} 
+            tooltip="Health Blog" 
+            active={isActive("/blog")}
           />
         </Link>
       </div>

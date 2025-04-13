@@ -14,6 +14,8 @@ import SymptomIdentifierPage from "./pages/SymptomIdentifierPage";
 import MedicineTimetablePage from "./pages/MedicineTimetablePage";
 import BloodTestPage from "./pages/BloodTestPage";
 import XRayAnalysisPage from "./pages/XRayAnalysisPage";
+import BlogPage from "./pages/BlogPage";
+import BlogPostPage from "./pages/BlogPostPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const App = () => (
               <Route path="/medicine-timetable" element={<MedicineTimetablePage />} />
               <Route path="/blood-test" element={<BloodTestPage />} />
               <Route path="/xray-analysis" element={<XRayAnalysisPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

@@ -11,14 +11,23 @@ const Index = () => {
         Chikitsak.AI
       </h1>
       <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 text-center max-w-lg mb-8 animate-fade-in">
-        Your AI-powered healthcare companion for virtual consultations, symptom analysis, and medical guidance.
+        Your AI-powered healthcare companion for virtual consultations, symptom analysis, medical guidance, and health education.
       </p>
-      <Button 
-        onClick={() => navigate("/doctors")}
-        className="animate-fade-in"
-      >
-        Explore Services
-      </Button>
+      <div className="flex flex-wrap gap-4 justify-center animate-fade-in">
+        <Button 
+          onClick={() => navigate("/doctors")}
+          className="bg-medease-500 hover:bg-medease-600"
+        >
+          Explore Services
+        </Button>
+        <Button 
+          onClick={() => navigate("/blog")}
+          variant="outline"
+          className="border-medease-500 text-medease-600 hover:bg-medease-50"
+        >
+          Read Health Blog
+        </Button>
+      </div>
     </div>
   );
 };
